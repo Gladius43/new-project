@@ -13,16 +13,24 @@ def vector_to_literal(vector: list[float]) -> str:
 
 
 async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> int:
-    row = await conn.fetchrow(
-        """
-        INSERT INTO topics (name)
-        VALUES ($1)
-        ON CONFLICT (name) DO UPDATE
-        SET name = EXCLUDED.name
-        RETURNING id
-        """,
-        topic_name,
-    )
+    row = await conn.fetchrow("SELECT id FROM topics WHERE name = $1", topic_name)
+    if row is not None:
+        return int(row["id"])
+
+    try:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO topics (name)
+            VALUES ($1)
+            RETURNING id
+            """,
+            topic_name,
+        )
+    except asyncpg.UniqueViolationError:
+        row = await conn.fetchrow("SELECT id FROM topics WHERE name = $1", topic_name)
+        if row is None:
+            raise
+
     return int(row["id"])
 
 
@@ -33,15 +41,39 @@ async def get_or_create_project(
 ) -> int:
     row = await conn.fetchrow(
         """
-        INSERT INTO projects (topic_id, name)
-        VALUES ($1, $2)
-        ON CONFLICT (topic_id, name) DO UPDATE
-        SET name = EXCLUDED.name
-        RETURNING id
+        SELECT id
+        FROM projects
+        WHERE topic_id = $1 AND name = $2
         """,
         topic_id,
         project_name,
     )
+    if row is not None:
+        return int(row["id"])
+
+    try:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO projects (topic_id, name)
+            VALUES ($1, $2)
+            RETURNING id
+            """,
+            topic_id,
+            project_name,
+        )
+    except asyncpg.UniqueViolationError:
+        row = await conn.fetchrow(
+            """
+            SELECT id
+            FROM projects
+            WHERE topic_id = $1 AND name = $2
+            """,
+            topic_id,
+            project_name,
+        )
+        if row is None:
+            raise
+
     return int(row["id"])
 
 

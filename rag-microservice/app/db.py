@@ -37,64 +37,92 @@ class Database:
             raise RuntimeError("Database pool is not initialized")
 
         schema_sql = f"""
-        CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
-        CREATE TABLE IF NOT EXISTS topics (
-            id BIGSERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+CREATE TABLE IF NOT EXISTS topics (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-        CREATE TABLE IF NOT EXISTS projects (
-            id BIGSERIAL PRIMARY KEY,
-            topic_id BIGINT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
-            name TEXT NOT NULL,
-            metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            UNIQUE(topic_id, name)
-        );
+CREATE TABLE IF NOT EXISTS projects (
+    id BIGSERIAL PRIMARY KEY,
+    topic_id BIGINT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(topic_id, name)
+);
 
-        CREATE TABLE IF NOT EXISTS sources (
-            id BIGSERIAL PRIMARY KEY,
-            topic_id BIGINT NOT NULL REFERENCES topics(id) ON DELETE RESTRICT,
-            project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
-            type TEXT NOT NULL,
-            origin TEXT,
-            external_id TEXT,
-            url TEXT,
-            published_at TIMESTAMPTZ,
-            metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+CREATE TABLE IF NOT EXISTS sources (
+    id BIGSERIAL PRIMARY KEY,
+    topic_id BIGINT NOT NULL REFERENCES topics(id) ON DELETE RESTRICT,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    type TEXT NOT NULL,
+    origin TEXT,
+    external_id TEXT,
+    url TEXT,
+    published_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-        CREATE TABLE IF NOT EXISTS documents (
-            id BIGSERIAL PRIMARY KEY,
-            source_id BIGINT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-            title TEXT NOT NULL,
-            language TEXT,
-            metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+CREATE TABLE IF NOT EXISTS documents (
+    id BIGSERIAL PRIMARY KEY,
+    source_id BIGINT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    language TEXT,
+    metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-        CREATE TABLE IF NOT EXISTS chunks (
-            id BIGSERIAL PRIMARY KEY,
-            document_id BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-            source_id BIGINT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-            chunk_index INT NOT NULL,
-            content TEXT NOT NULL,
-            embedding VECTOR({self._embedding_dim}) NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            UNIQUE(document_id, chunk_index)
-        );
+CREATE TABLE IF NOT EXISTS chunks (
+    id BIGSERIAL PRIMARY KEY,
+    document_id BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    source_id BIGINT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    chunk_index INT NOT NULL,
+    content TEXT NOT NULL,
+    embedding VECTOR({self._embedding_dim}) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(document_id, chunk_index)
+);
+"""
 
-        CREATE INDEX IF NOT EXISTS idx_topics_name ON topics(name);
-        CREATE INDEX IF NOT EXISTS idx_projects_topic_name ON projects(topic_id, name);
-        CREATE INDEX IF NOT EXISTS idx_sources_topic_project ON sources(topic_id, project_id);
-        CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source_id);
-        CREATE INDEX IF NOT EXISTS idx_chunks_embedding_cosine
-            ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-        """
+        migration_sql = """
+-- Backfill old table layouts from previous versions.
+ALTER TABLE topics ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE topics ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS topic_id BIGINT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS topic_id BIGINT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS project_id BIGINT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS type TEXT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS origin TEXT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS url TEXT;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS language TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE chunks ADD COLUMN IF NOT EXISTS source_id BIGINT;
+ALTER TABLE chunks ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_topics_name ON topics(name);
+CREATE INDEX IF NOT EXISTS idx_projects_topic_name ON projects(topic_id, name);
+CREATE INDEX IF NOT EXISTS idx_sources_topic_project ON sources(topic_id, project_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_embedding_cosine
+    ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+"""
 
         async with self.pool.acquire() as conn:
             await conn.execute(schema_sql)
+            await conn.execute(migration_sql)
