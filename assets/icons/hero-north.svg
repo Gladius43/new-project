@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Northern hero">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#c9e2ef" />
+      <stop offset="100%" stop-color="#6da4c6" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="9" fill="url(#bg)" />
+  <path d="M32 8l9 10-4 11H27l-4-11z" fill="#e9f3f8" stroke="#233846" stroke-width="2" />
+  <path d="M22 56v-8c0-6 4-10 10-10s10 4 10 10v8z" fill="#243846" />
+  <circle cx="32" cy="33" r="8" fill="#f5d9bf" stroke="#3a2a1c" stroke-width="2" />
+  <path d="M24 33c3-2 13-2 16 0" stroke="#3a2a1c" stroke-width="2" fill="none" />
+  <path d="M25 30c2-3 4-4 7-4s5 1 7 4" stroke="#2f4451" stroke-width="3" fill="none" />
+</svg>

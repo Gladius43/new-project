@@ -1,0 +1,542 @@
+:root {
+  --bg-deep: #11161a;
+  --bg-panel: #ede4d0;
+  --bg-panel-edge: #b99f73;
+  --ink-dark: #1a1c1f;
+  --ink-soft: #43413a;
+  --accent: #7f241d;
+  --accent-2: #2f4f69;
+  --north: #326f99;
+  --crown: #9b3a2d;
+  --tile-size: 74px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #24303a 0%, var(--bg-deep) 55%, #07090c 100%);
+  color: var(--ink-dark);
+  min-height: 100vh;
+}
+
+.setup-modal {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 10%, rgba(40, 49, 58, 0.7) 0%, rgba(10, 13, 17, 0.95) 75%);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 18px;
+}
+
+.setup-card {
+  width: min(500px, 96vw);
+  background: linear-gradient(180deg, #f0e7d3 0%, #d3c09d 100%);
+  border: 2px solid #735635;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.setup-card h2 {
+  margin: 0;
+}
+
+.setup-subtitle {
+  color: #4d4337;
+  margin: 6px 0 14px;
+}
+
+.setup-label {
+  display: block;
+  font-weight: 700;
+  margin: 10px 0 6px;
+}
+
+.setup-select {
+  width: 100%;
+  font: inherit;
+  border-radius: 8px;
+  border: 1px solid #8b714b;
+  background: #f6f0e3;
+  padding: 8px 10px;
+}
+
+.setup-btn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.setup-btn.secondary {
+  margin-top: 8px;
+  background: linear-gradient(180deg, #ece7dd 0%, #c7baa2 100%);
+}
+
+.app-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(180deg, #f2ebda 0%, #d9c8a7 100%);
+  border: 2px solid #8f7550;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+h1 {
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.day-turn-box {
+  text-align: right;
+  font-weight: 700;
+  color: #352b22;
+}
+
+.layout {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 12px;
+}
+
+.map-panel {
+  background: rgba(14, 18, 23, 0.55);
+  border: 2px solid #364552;
+  border-radius: 12px;
+  padding: 12px;
+  backdrop-filter: blur(2px);
+}
+
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(10, var(--tile-size));
+  grid-template-rows: repeat(7, var(--tile-size));
+  gap: 2px;
+  width: fit-content;
+  margin: 0 auto;
+  background: #2a2f35;
+  padding: 4px;
+  border-radius: 8px;
+  border: 2px solid #0f1216;
+}
+
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #0f1113;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.25);
+  user-select: none;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.tile:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.tile.selected {
+  box-shadow: inset 0 0 0 3px #ffea9f;
+}
+
+.tile.reachable {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.terrain-plains {
+  background: linear-gradient(145deg, #8aaf57 0%, #6c8f3d 100%);
+}
+
+.terrain-forest {
+  background: linear-gradient(145deg, #4f8345 0%, #2f5e36 100%);
+}
+
+.terrain-hills {
+  background: linear-gradient(145deg, #998b63 0%, #776c4d 100%);
+}
+
+.terrain-river {
+  background: linear-gradient(145deg, #5f92b0 0%, #3f708f 100%);
+}
+
+.terrain-road {
+  background: linear-gradient(145deg, #b39c79 0%, #947d5f 100%);
+}
+
+.marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.marker.hero-north {
+  background: linear-gradient(180deg, #b5d9ef 0%, #6da4c6 100%);
+}
+
+.marker.hero-crown {
+  background: linear-gradient(180deg, #f0c6bb 0%, #c46f5f 100%);
+}
+
+.marker.mine {
+  background: linear-gradient(180deg, #ddd7c4 0%, #b7a487 100%);
+}
+
+.marker.town {
+  background: linear-gradient(180deg, #efe3cc 0%, #c7b187 100%);
+}
+
+.marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.marker-fallback {
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.owner-north::after,
+.owner-crown::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 5px;
+  border-radius: 999px;
+}
+
+.owner-north::after {
+  background: var(--north);
+}
+
+.owner-crown::after {
+  background: var(--crown);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 2px solid var(--bg-panel-edge);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.panel h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.hero-panel,
+.log-panel,
+.battle-log {
+  min-height: 92px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  border: 1px solid rgba(103, 86, 60, 0.4);
+  padding: 8px;
+  font-size: 0.9rem;
+}
+
+.log-panel,
+.battle-log {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.recruit-panel {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.hero-army-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.unit-line {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.unit-icon-small {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(58, 44, 26, 0.45);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.unit-icon-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn {
+  font: inherit;
+  border: 1px solid #6d5b3f;
+  border-radius: 8px;
+  padding: 7px 11px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ede5d5 0%, #ccb78f 100%);
+}
+
+.btn.primary {
+  background: linear-gradient(180deg, #e0c7a1 0%, #b48652 100%);
+  border-color: #6c4a29;
+}
+
+.btn.secondary {
+  background: linear-gradient(180deg, #eeeae2 0%, #cfc5b2 100%);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.battle-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 13, 17, 0.78);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+
+.hidden {
+  display: none;
+}
+
+.battle-window {
+  width: min(900px, 92vw);
+  background: linear-gradient(180deg, #e9dfc9 0%, #ccb792 100%);
+  border: 3px solid #765833;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.town-window {
+  width: min(980px, 94vw);
+}
+
+.battle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.battle-header h2 {
+  margin: 0 0 8px;
+}
+
+.battle-status {
+  color: #4a2f16;
+  font-weight: 700;
+}
+
+.battle-armies {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.battle-armies h3 {
+  margin: 6px 0;
+}
+
+.stack-list {
+  display: grid;
+  gap: 6px;
+}
+
+.stack-card {
+  border: 1px solid #9b835b;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 8px;
+  font-size: 0.9rem;
+}
+
+.stack-card-header {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.stack-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(58, 44, 26, 0.45);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.stack-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stack-card.targetable {
+  outline: 2px solid #7f241d;
+  cursor: pointer;
+}
+
+.stack-card.active {
+  box-shadow: 0 0 0 2px #2e5068 inset;
+}
+
+.battle-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0;
+}
+
+.town-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.town-panel {
+  min-height: 220px;
+}
+
+.town-buildings,
+.town-recruit {
+  display: grid;
+  gap: 8px;
+}
+
+.town-card {
+  border: 1px solid rgba(98, 74, 45, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.town-card-title {
+  font-weight: 700;
+}
+
+.town-card-meta {
+  font-size: 0.86rem;
+  color: #4f4335;
+}
+
+.town-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muted {
+  color: #666255;
+}
+
+.endgame {
+  text-align: center;
+  width: min(520px, 90vw);
+}
+
+@media (max-width: 1120px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    grid-row: 1;
+  }
+
+  .map-grid {
+    transform: scale(0.95);
+    transform-origin: top center;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --tile-size: 58px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .day-turn-box {
+    text-align: left;
+  }
+
+  .town-columns {
+    grid-template-columns: 1fr;
+  }
+}

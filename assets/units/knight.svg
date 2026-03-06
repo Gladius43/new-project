@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Knight">
+  <rect width="64" height="64" rx="8" fill="#c6ced9" />
+  <path d="M15 55v-9c0-7 7-11 17-11s17 4 17 11v9z" fill="#2a3648" />
+  <circle cx="32" cy="27" r="9" fill="#f1d3ba" stroke="#3d2b1f" stroke-width="2" />
+  <path d="M24 29c3-2 13-2 16 0" stroke="#3d2b1f" stroke-width="2" fill="none" />
+  <path d="M19 15h26l-2 10H21z" fill="#d1b66d" stroke="#6a4a23" stroke-width="2" />
+  <path d="M32 8v15" stroke="#6a4a23" stroke-width="2" />
+  <path d="M47 54l6-34" stroke="#6d6f77" stroke-width="3" />
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Raider">
+  <rect width="64" height="64" rx="8" fill="#d7c6b8" />
+  <path d="M16 55v-9c0-7 7-11 16-11s16 4 16 11v9z" fill="#4e2a23" />
+  <circle cx="32" cy="28" r="9" fill="#efc7aa" stroke="#4f3022" stroke-width="2" />
+  <path d="M24 30c3-2 13-2 16 0" stroke="#4f3022" stroke-width="2" fill="none" />
+  <path d="M16 18l9-9M16 18l9 9" stroke="#5b5f69" stroke-width="3" />
+  <path d="M48 12l-5 16" stroke="#6f4f2e" stroke-width="4" />
+</svg>

@@ -1,0 +1,38 @@
+{
+  "name": "thrones-clash",
+  "version": "0.1.0",
+  "description": "Thrones Clash - 1v1 turn-based strategy prototype",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test:smoke": "playwright test --reporter=list",
+    "build:dmg": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "electron": "^35.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.thronesclash.prototype",
+    "productName": "Thrones Clash",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "styles.css",
+      "game.js",
+      "assets/**/*",
+      "electron/**/*",
+      "README.md"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        "dmg"
+      ],
+      "artifactName": "Thrones-Clash-${version}.${ext}"
+    }
+  }
+}

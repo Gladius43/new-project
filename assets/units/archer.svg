@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Archer">
+  <rect width="64" height="64" rx="8" fill="#c8d8bc" />
+  <path d="M17 55v-8c0-6 6-10 15-10s15 4 15 10v8z" fill="#2f4d35" />
+  <circle cx="32" cy="29" r="9" fill="#f0cfb3" stroke="#4f3a2a" stroke-width="2" />
+  <path d="M24 31c3-2 13-2 16 0" stroke="#4f3a2a" stroke-width="2" fill="none" />
+  <path d="M47 15c-7 6-7 28 0 34" stroke="#6f4d2e" stroke-width="3" fill="none" />
+  <path d="M20 32h28" stroke="#66574a" stroke-width="2" />
+</svg>

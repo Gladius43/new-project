@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Levy">
+  <rect width="64" height="64" rx="8" fill="#d9d0bd" />
+  <path d="M16 55v-9c0-7 7-11 16-11s16 4 16 11v9z" fill="#4d4f56" />
+  <circle cx="32" cy="28" r="9" fill="#f3d4b8" stroke="#4c3526" stroke-width="2" />
+  <path d="M24 30c2-2 14-2 16 0" stroke="#4c3526" stroke-width="2" fill="none" />
+  <rect x="7" y="8" width="7" height="36" rx="2" fill="#7d5a34" />
+  <path d="M10 8l10 5-10 5z" fill="#6e7780" />
+</svg>

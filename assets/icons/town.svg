@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Town">
+  <rect width="64" height="64" rx="9" fill="#d9c7a4" />
+  <rect x="14" y="30" width="36" height="22" fill="#ece4d2" stroke="#6f5b3d" stroke-width="2" />
+  <path d="M11 30l21-14 21 14z" fill="#9b3a2d" stroke="#5b231b" stroke-width="2" />
+  <rect x="28" y="39" width="8" height="13" fill="#6f5338" />
+  <rect x="19" y="36" width="6" height="6" fill="#9fc0d9" />
+  <rect x="39" y="36" width="6" height="6" fill="#9fc0d9" />
+  <rect x="45" y="10" width="3" height="14" fill="#4a3a26" />
+  <path d="M48 12l8 3-8 3z" fill="#2f4f69" />
+</svg>

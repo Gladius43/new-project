@@ -1,0 +1,166 @@
+from __future__ import annotations
+
+import json
+from typing import Any
+
+import asyncpg
+
+from app.schemas import DocumentPayload, SourcePayload
+
+
+def vector_to_literal(vector: list[float]) -> str:
+    return "[" + ",".join(f"{value:.10f}" for value in vector) + "]"
+
+
+async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> int:
+    row = await conn.fetchrow(
+        """
+        INSERT INTO topics (name)
+        VALUES ($1)
+        ON CONFLICT (name) DO UPDATE
+        SET name = EXCLUDED.name
+        RETURNING id
+        """,
+        topic_name,
+    )
+    return int(row["id"])
+
+
+async def get_or_create_project(
+    conn: asyncpg.Connection,
+    topic_id: int,
+    project_name: str,
+) -> int:
+    row = await conn.fetchrow(
+        """
+        INSERT INTO projects (topic_id, name)
+        VALUES ($1, $2)
+        ON CONFLICT (topic_id, name) DO UPDATE
+        SET name = EXCLUDED.name
+        RETURNING id
+        """,
+        topic_id,
+        project_name,
+    )
+    return int(row["id"])
+
+
+async def create_source(
+    conn: asyncpg.Connection,
+    topic_id: int,
+    project_id: int,
+    source: SourcePayload,
+) -> int:
+    row = await conn.fetchrow(
+        """
+        INSERT INTO sources (
+            topic_id,
+            project_id,
+            type,
+            origin,
+            external_id,
+            url,
+            published_at,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        RETURNING id
+        """,
+        topic_id,
+        project_id,
+        source.type,
+        source.origin,
+        source.external_id,
+        source.url,
+        source.published_at,
+        json.dumps(source.metadata),
+    )
+    return int(row["id"])
+
+
+async def create_document(
+    conn: asyncpg.Connection,
+    source_id: int,
+    document: DocumentPayload,
+) -> int:
+    row = await conn.fetchrow(
+        """
+        INSERT INTO documents (source_id, title, language, metadata)
+        VALUES ($1, $2, $3, $4::jsonb)
+        RETURNING id
+        """,
+        source_id,
+        document.title,
+        document.language,
+        json.dumps(document.metadata),
+    )
+    return int(row["id"])
+
+
+async def insert_chunks(
+    conn: asyncpg.Connection,
+    document_id: int,
+    source_id: int,
+    chunks: list[str],
+    embeddings: list[list[float]],
+) -> int:
+    records = []
+    for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+        records.append((document_id, source_id, idx, chunk, vector_to_literal(embedding)))
+
+    await conn.executemany(
+        """
+        INSERT INTO chunks (document_id, source_id, chunk_index, content, embedding)
+        VALUES ($1, $2, $3, $4, $5::vector)
+        """,
+        records,
+    )
+    return len(records)
+
+
+async def search_chunks(
+    conn: asyncpg.Connection,
+    query_vector: list[float],
+    top_k: int,
+    topic_name: str | None = None,
+    project_name: str | None = None,
+) -> list[dict[str, Any]]:
+    query_vector_literal = vector_to_literal(query_vector)
+    params: list[Any] = [query_vector_literal]
+    conditions: list[str] = []
+
+    sql = """
+    SELECT
+        c.id AS chunk_id,
+        c.document_id,
+        c.source_id,
+        c.content,
+        (c.embedding <=> $1::vector) AS distance,
+        d.title AS title,
+        s.type AS source_type,
+        s.url AS source_url,
+        t.name AS topic_name,
+        p.name AS project_name
+    FROM chunks c
+    JOIN documents d ON d.id = c.document_id
+    JOIN sources s ON s.id = c.source_id
+    JOIN topics t ON t.id = s.topic_id
+    JOIN projects p ON p.id = s.project_id
+    """
+
+    if topic_name:
+        params.append(topic_name)
+        conditions.append(f"t.name = ${len(params)}")
+
+    if project_name:
+        params.append(project_name)
+        conditions.append(f"p.name = ${len(params)}")
+
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+
+    params.append(top_k)
+    sql += f" ORDER BY c.embedding <=> $1::vector LIMIT ${len(params)}"
+
+    rows = await conn.fetch(sql, *params)
+    return [dict(row) for row in rows]

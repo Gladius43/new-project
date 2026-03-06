@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thrones Clash - 1v1 Strategy Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="setupModal" class="setup-modal">
+      <div class="setup-card">
+        <h2>Нова Кампанія</h2>
+        <p class="setup-subtitle">Оберіть сторону та театр війни</p>
+        <label class="setup-label" for="factionSelect">Сторона гравця</label>
+        <select id="factionSelect" class="setup-select"></select>
+
+        <label class="setup-label" for="mapSelect">Карта</label>
+        <select id="mapSelect" class="setup-select"></select>
+
+        <button id="startGameBtn" class="btn primary setup-btn">Почати кампанію</button>
+        <button id="setupLoadBtn" class="btn setup-btn secondary">Завантажити сейв</button>
+      </div>
+    </div>
+
+    <div id="gameRoot" class="app-shell hidden">
+      <header class="topbar">
+        <div>
+          <h1>Thrones Clash</h1>
+          <p class="subtitle">Покрокова 1v1 стратегія у дусі HoMM3</p>
+        </div>
+        <div class="day-turn-box">
+          <div id="dayCounter">Day 1</div>
+          <div id="turnCounter">Хід: Північний союз</div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="map-panel">
+          <div class="map-toolbar">
+            <button id="endTurnBtn" class="btn primary">Завершити хід</button>
+            <button id="centerHeroBtn" class="btn">До героя</button>
+            <button id="townScreenBtn" class="btn">Місто</button>
+            <button id="saveBtn" class="btn">Зберегти</button>
+            <button id="loadBtn" class="btn">Завантажити</button>
+          </div>
+          <div id="mapGrid" class="map-grid" aria-label="ігрова карта"></div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel">
+            <h2>Ресурси</h2>
+            <div id="resourcePanel" class="resource-grid"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Обраний герой</h2>
+            <div id="heroPanel" class="hero-panel">Оберіть свого героя на карті.</div>
+            <div id="recruitPanel" class="recruit-panel"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Журнал подій</h2>
+            <div id="logPanel" class="log-panel"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div id="townModal" class="battle-modal hidden" aria-live="polite">
+      <div class="battle-window town-window">
+        <header class="battle-header">
+          <h2 id="townTitle">Місто</h2>
+          <button id="closeTownBtn" class="btn">Закрити</button>
+        </header>
+
+        <div class="town-columns">
+          <section class="panel town-panel">
+            <h3>Будівлі</h3>
+            <div id="townBuildings" class="town-buildings"></div>
+          </section>
+          <section class="panel town-panel">
+            <h3>Найм гарнізону</h3>
+            <div id="townRecruit" class="town-recruit"></div>
+          </section>
+        </div>
+
+        <div id="townNotes" class="battle-log"></div>
+      </div>
+    </div>
+
+    <div id="battleModal" class="battle-modal hidden" aria-live="polite">
+      <div class="battle-window">
+        <header class="battle-header">
+          <h2>Бій</h2>
+          <div id="battleStatus" class="battle-status"></div>
+        </header>
+
+        <div class="battle-armies">
+          <div>
+            <h3>Атакуючий</h3>
+            <div id="attackerStacks" class="stack-list"></div>
+          </div>
+          <div>
+            <h3>Оборонець</h3>
+            <div id="defenderStacks" class="stack-list"></div>
+          </div>
+        </div>
+
+        <div class="battle-controls">
+          <button id="defendBtn" class="btn">Оборона / Пропуск</button>
+        </div>
+
+        <div id="battleLog" class="battle-log"></div>
+      </div>
+    </div>
+
+    <div id="endgameModal" class="battle-modal hidden">
+      <div class="battle-window endgame">
+        <h2 id="endgameTitle"></h2>
+        <p id="endgameText"></p>
+        <button id="restartBtn" class="btn primary">Почати заново</button>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>

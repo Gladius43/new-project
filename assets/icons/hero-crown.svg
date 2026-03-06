@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Crown hero">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f1d2c8" />
+      <stop offset="100%" stop-color="#c46f5f" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="9" fill="url(#bg)" />
+  <path d="M16 25l7-12 9 7 9-7 7 12-6 5H22z" fill="#e0c06a" stroke="#6d4e24" stroke-width="2" />
+  <path d="M22 56v-8c0-6 4-10 10-10s10 4 10 10v8z" fill="#4b1f1a" />
+  <circle cx="32" cy="33" r="8" fill="#f5d5bc" stroke="#462719" stroke-width="2" />
+  <path d="M24 33c3-2 13-2 16 0" stroke="#462719" stroke-width="2" fill="none" />
+  <path d="M25 30c2-3 4-4 7-4s5 1 7 4" stroke="#5c2b20" stroke-width="3" fill="none" />
+</svg>
