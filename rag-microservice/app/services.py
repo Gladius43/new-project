@@ -129,10 +129,10 @@ class IngestService:
             raise ServiceError(500, f"Database error during ingest: {str(exc)}") from exc
 
         return IngestResponse(
-            topic_id=topic_id,
-            project_id=project_id,
-            source_id=source_id,
-            document_id=document_id,
+            topic_id=str(topic_id),
+            project_id=str(project_id),
+            source_id=str(source_id),
+            document_id=str(document_id),
             chunks_inserted=chunks_inserted,
         )
 

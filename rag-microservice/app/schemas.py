@@ -44,10 +44,10 @@ class IngestRequest(BaseModel):
 
 
 class IngestResponse(BaseModel):
-    topic_id: int
-    project_id: int
-    source_id: int
-    document_id: int
+    topic_id: str
+    project_id: str
+    source_id: str
+    document_id: str
     chunks_inserted: int
 
 

@@ -12,10 +12,10 @@ def vector_to_literal(vector: list[float]) -> str:
     return "[" + ",".join(f"{value:.10f}" for value in vector) + "]"
 
 
-async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> int:
+async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> Any:
     row = await conn.fetchrow("SELECT id FROM topics WHERE name = $1", topic_name)
     if row is not None:
-        return int(row["id"])
+        return row["id"]
 
     try:
         row = await conn.fetchrow(
@@ -31,14 +31,14 @@ async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> int:
         if row is None:
             raise
 
-    return int(row["id"])
+    return row["id"]
 
 
 async def get_or_create_project(
     conn: asyncpg.Connection,
-    topic_id: int,
+    topic_id: Any,
     project_name: str,
-) -> int:
+) -> Any:
     row = await conn.fetchrow(
         """
         SELECT id
@@ -49,7 +49,7 @@ async def get_or_create_project(
         project_name,
     )
     if row is not None:
-        return int(row["id"])
+        return row["id"]
 
     try:
         row = await conn.fetchrow(
@@ -74,15 +74,15 @@ async def get_or_create_project(
         if row is None:
             raise
 
-    return int(row["id"])
+    return row["id"]
 
 
 async def create_source(
     conn: asyncpg.Connection,
-    topic_id: int,
-    project_id: int,
+    topic_id: Any,
+    project_id: Any,
     source: SourcePayload,
-) -> int:
+) -> Any:
     row = await conn.fetchrow(
         """
         INSERT INTO sources (
@@ -107,14 +107,14 @@ async def create_source(
         source.published_at,
         json.dumps(source.metadata),
     )
-    return int(row["id"])
+    return row["id"]
 
 
 async def create_document(
     conn: asyncpg.Connection,
-    source_id: int,
+    source_id: Any,
     document: DocumentPayload,
-) -> int:
+) -> Any:
     row = await conn.fetchrow(
         """
         INSERT INTO documents (source_id, title, language, metadata)
@@ -126,13 +126,13 @@ async def create_document(
         document.language,
         json.dumps(document.metadata),
     )
-    return int(row["id"])
+    return row["id"]
 
 
 async def insert_chunks(
     conn: asyncpg.Connection,
-    document_id: int,
-    source_id: int,
+    document_id: Any,
+    source_id: Any,
     chunks: list[str],
     embeddings: list[list[float]],
 ) -> int:
