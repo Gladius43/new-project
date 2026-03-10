@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import uuid
 from typing import Any
 
 import asyncpg
@@ -10,6 +12,55 @@ from app.schemas import DocumentPayload, SourcePayload
 
 def vector_to_literal(vector: list[float]) -> str:
     return "[" + ",".join(f"{value:.10f}" for value in vector) + "]"
+
+
+def _stable_int64_from_value(value: Any) -> int:
+    digest = hashlib.sha1(str(value).encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=False) & ((1 << 63) - 1)
+
+
+def _coerce_value_for_udt(value: Any, udt_name: str | None) -> Any:
+    if value is None or udt_name is None:
+        return value
+
+    if udt_name in {"int2", "int4", "int8"}:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        try:
+            return int(str(value))
+        except ValueError:
+            return _stable_int64_from_value(value)
+
+    if udt_name == "uuid":
+        if isinstance(value, uuid.UUID):
+            return value
+        try:
+            return uuid.UUID(str(value))
+        except ValueError:
+            return uuid.uuid5(uuid.NAMESPACE_OID, str(value))
+
+    return str(value)
+
+
+async def _get_column_udt_name(
+    conn: asyncpg.Connection,
+    table_name: str,
+    column_name: str,
+) -> str | None:
+    row = await conn.fetchrow(
+        """
+        SELECT udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+        """,
+        table_name,
+        column_name,
+    )
+    if row is None:
+        return None
+    return row["udt_name"]
 
 
 async def get_or_create_topic(conn: asyncpg.Connection, topic_name: str) -> Any:
@@ -39,13 +90,16 @@ async def get_or_create_project(
     topic_id: Any,
     project_name: str,
 ) -> Any:
+    topic_id_udt = await _get_column_udt_name(conn, "projects", "topic_id")
+    coerced_topic_id = _coerce_value_for_udt(topic_id, topic_id_udt)
+
     row = await conn.fetchrow(
         """
         SELECT id
         FROM projects
         WHERE topic_id = $1 AND name = $2
         """,
-        topic_id,
+        coerced_topic_id,
         project_name,
     )
     if row is not None:
@@ -58,7 +112,7 @@ async def get_or_create_project(
             VALUES ($1, $2)
             RETURNING id
             """,
-            topic_id,
+            coerced_topic_id,
             project_name,
         )
     except asyncpg.UniqueViolationError:
@@ -68,7 +122,7 @@ async def get_or_create_project(
             FROM projects
             WHERE topic_id = $1 AND name = $2
             """,
-            topic_id,
+            coerced_topic_id,
             project_name,
         )
         if row is None:
@@ -81,8 +135,19 @@ async def create_source(
     conn: asyncpg.Connection,
     topic_id: Any,
     project_id: Any,
+    topic_name: str,
+    project_name: str,
     source: SourcePayload,
 ) -> Any:
+    source_topic_udt = await _get_column_udt_name(conn, "sources", "topic_id")
+    source_project_udt = await _get_column_udt_name(conn, "sources", "project_id")
+    coerced_topic_id = _coerce_value_for_udt(topic_id, source_topic_udt)
+    coerced_project_id = _coerce_value_for_udt(project_id, source_project_udt)
+
+    source_metadata = dict(source.metadata)
+    source_metadata.setdefault("topic_name", topic_name)
+    source_metadata.setdefault("project_name", project_name)
+
     row = await conn.fetchrow(
         """
         INSERT INTO sources (
@@ -98,14 +163,14 @@ async def create_source(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
         RETURNING id
         """,
-        topic_id,
-        project_id,
+        coerced_topic_id,
+        coerced_project_id,
         source.type,
         source.origin,
         source.external_id,
         source.url,
         source.published_at,
-        json.dumps(source.metadata),
+        json.dumps(source_metadata),
     )
     return row["id"]
 
@@ -171,22 +236,22 @@ async def search_chunks(
         d.title AS title,
         s.type AS source_type,
         s.url AS source_url,
-        t.name AS topic_name,
-        p.name AS project_name
+        COALESCE(t.name, s.metadata->>'topic_name', '') AS topic_name,
+        COALESCE(p.name, s.metadata->>'project_name', '') AS project_name
     FROM chunks c
     JOIN documents d ON d.id::text = c.document_id::text
     JOIN sources s ON s.id::text = c.source_id::text
-    JOIN topics t ON t.id::text = s.topic_id::text
-    JOIN projects p ON p.id::text = s.project_id::text
+    LEFT JOIN topics t ON t.id::text = s.topic_id::text
+    LEFT JOIN projects p ON p.id::text = s.project_id::text
     """
 
     if topic_name:
         params.append(topic_name)
-        conditions.append(f"t.name = ${len(params)}")
+        conditions.append(f"COALESCE(t.name, s.metadata->>'topic_name', '') = ${len(params)}")
 
     if project_name:
         params.append(project_name)
-        conditions.append(f"p.name = ${len(params)}")
+        conditions.append(f"COALESCE(p.name, s.metadata->>'project_name', '') = ${len(params)}")
 
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)

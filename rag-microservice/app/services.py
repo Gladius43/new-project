@@ -114,7 +114,14 @@ class IngestService:
                 async with conn.transaction():
                     topic_id = await models.get_or_create_topic(conn, payload.topic_name)
                     project_id = await models.get_or_create_project(conn, topic_id, payload.project_name)
-                    source_id = await models.create_source(conn, topic_id, project_id, payload.source)
+                    source_id = await models.create_source(
+                        conn=conn,
+                        topic_id=topic_id,
+                        project_id=project_id,
+                        topic_name=payload.topic_name,
+                        project_name=payload.project_name,
+                        source=payload.source,
+                    )
                     document_id = await models.create_document(conn, source_id, payload.document)
                     chunks_inserted = await models.insert_chunks(
                         conn=conn,
