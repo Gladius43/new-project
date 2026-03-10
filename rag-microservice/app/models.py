@@ -65,6 +65,10 @@ async def _get_column_udt_name(
     return row["udt_name"]
 
 
+async def _column_exists(conn: asyncpg.Connection, table_name: str, column_name: str) -> bool:
+    return (await _get_column_udt_name(conn, table_name, column_name)) is not None
+
+
 async def _resolve_source_type(conn: asyncpg.Connection, requested_type: str) -> str:
     type_udt = await _get_column_udt_name(conn, "sources", "type")
     if not type_udt:
@@ -204,18 +208,33 @@ async def create_document(
     conn: asyncpg.Connection,
     source_id: Any,
     document: DocumentPayload,
+    raw_text: str,
 ) -> Any:
-    row = await conn.fetchrow(
-        """
-        INSERT INTO documents (source_id, title, language, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
-        RETURNING id
-        """,
-        source_id,
-        document.title,
-        document.language,
-        json.dumps(document.metadata),
-    )
+    if await _column_exists(conn, "documents", "content"):
+        row = await conn.fetchrow(
+            """
+            INSERT INTO documents (source_id, title, content, language, metadata)
+            VALUES ($1, $2, $3, $4, $5::jsonb)
+            RETURNING id
+            """,
+            source_id,
+            document.title,
+            raw_text,
+            document.language,
+            json.dumps(document.metadata),
+        )
+    else:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO documents (source_id, title, language, metadata)
+            VALUES ($1, $2, $3, $4::jsonb)
+            RETURNING id
+            """,
+            source_id,
+            document.title,
+            document.language,
+            json.dumps(document.metadata),
+        )
     return row["id"]
 
 

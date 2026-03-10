@@ -122,7 +122,12 @@ class IngestService:
                         project_name=payload.project_name,
                         source=payload.source,
                     )
-                    document_id = await models.create_document(conn, source_id, payload.document)
+                    document_id = await models.create_document(
+                        conn=conn,
+                        source_id=source_id,
+                        document=payload.document,
+                        raw_text=payload.text,
+                    )
                     chunks_inserted = await models.insert_chunks(
                         conn=conn,
                         document_id=document_id,
