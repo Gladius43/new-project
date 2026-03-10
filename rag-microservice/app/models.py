@@ -93,6 +93,7 @@ async def get_or_create_project(
     project_name: str,
 ) -> Any:
     topic_id_udt = await _get_column_udt_name(conn, "projects", "topic_id")
+    coerced_topic_id = _coerce_value_for_udt(topic_id, topic_id_udt)
     row = await conn.fetchrow("SELECT id FROM projects WHERE name = $1", project_name)
     if row is not None:
         return row["id"]
