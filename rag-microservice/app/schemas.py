@@ -67,9 +67,9 @@ class SearchResultSource(BaseModel):
 
 
 class SearchResult(BaseModel):
-    chunk_id: int
-    document_id: int
-    source_id: int
+    chunk_id: str
+    document_id: str
+    source_id: str
     content: str
     distance: float
     source: SearchResultSource

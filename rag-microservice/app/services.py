@@ -164,9 +164,9 @@ class SearchService:
 
         results = [
             SearchResult(
-                chunk_id=int(row["chunk_id"]),
-                document_id=int(row["document_id"]),
-                source_id=int(row["source_id"]),
+                chunk_id=str(row["chunk_id"]),
+                document_id=str(row["document_id"]),
+                source_id=str(row["source_id"]),
                 content=row["content"],
                 distance=float(row["distance"]),
                 source=SearchResultSource(

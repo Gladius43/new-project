@@ -163,9 +163,9 @@ async def search_chunks(
 
     sql = """
     SELECT
-        c.id AS chunk_id,
-        c.document_id,
-        c.source_id,
+        c.id::text AS chunk_id,
+        c.document_id::text AS document_id,
+        c.source_id::text AS source_id,
         c.content,
         (c.embedding <=> $1::vector) AS distance,
         d.title AS title,
@@ -174,10 +174,10 @@ async def search_chunks(
         t.name AS topic_name,
         p.name AS project_name
     FROM chunks c
-    JOIN documents d ON d.id = c.document_id
-    JOIN sources s ON s.id = c.source_id
-    JOIN topics t ON t.id = s.topic_id
-    JOIN projects p ON p.id = s.project_id
+    JOIN documents d ON d.id::text = c.document_id::text
+    JOIN sources s ON s.id::text = c.source_id::text
+    JOIN topics t ON t.id::text = s.topic_id::text
+    JOIN projects p ON p.id::text = s.project_id::text
     """
 
     if topic_name:
