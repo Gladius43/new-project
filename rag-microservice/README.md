@@ -5,6 +5,8 @@ Focused RAG ingestion/search API with:
 - async Postgres connection pool (`asyncpg`)
 - `pgvector` storage/query for embeddings
 - OpenAI embeddings for chunk + query vectors
+- file upload endpoint for `pdf` / `docx` / UTF-8 text files
+- built-in web UI (`/`) for upload + search
 
 ## Project layout
 
@@ -16,6 +18,8 @@ rag-microservice/
     models.py
     schemas.py
     services.py
+    static/
+      index.html
   requirements.txt
   Dockerfile
   README.md
@@ -49,6 +53,12 @@ Start API:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Open UI in browser:
+
+```bash
+http://localhost:8000/
 ```
 
 ## Run with Docker
@@ -95,6 +105,21 @@ curl -X POST "http://localhost:8000/ingest" \
   }'
 ```
 
+### `POST /upload` (multipart file upload)
+
+Supports: `pdf`, `docx`, `txt`, `md`, `csv`, `json`, `log`, `rst`.
+
+```bash
+curl -X POST "http://localhost:8000/upload" \
+  -F "file=@/absolute/path/to/file.pdf" \
+  -F "topic_name=climate-migration" \
+  -F "project_name=ukraine-climate-haven" \
+  -F "title=Uploaded PDF" \
+  -F "language=en" \
+  -F "max_chars=1000" \
+  -F "overlap_chars=200"
+```
+
 ### `POST /search`
 
 ```bash
@@ -113,3 +138,4 @@ curl -X POST "http://localhost:8000/search" \
 - Startup creates required tables and indexes automatically.
 - Embeddings are normalized to unit vectors before insert/search.
 - Keep `EMBEDDING_MODEL` and `EMBEDDING_DIM` consistent with your database schema.
+- `/upload` extracts text first, then ingests it through the same pipeline as `/ingest`.

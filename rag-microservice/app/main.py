@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import json
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from app.db import Database
-from app.schemas import IngestRequest, IngestResponse, SearchRequest, SearchResponse
-from app.services import EmbeddingService, IngestService, SearchService, ServiceError
+from app.schemas import IngestRequest, IngestResponse, SearchRequest, SearchResponse, UploadResponse
+from app.services import EmbeddingService, IngestService, SearchService, ServiceError, extract_text_from_file
+
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 def get_required_env(name: str) -> str:
@@ -55,6 +62,29 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RAG Microservice", version="1.0.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+def _parse_form_json(value: str, field_name: str) -> dict:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=422, detail=f"{field_name} must be valid JSON object") from exc
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=422, detail=f"{field_name} must be JSON object")
+    return parsed
+
+
+def _none_if_empty(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized if normalized else None
+
+
+@app.get("/", include_in_schema=False)
+async def ui_home() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.exception_handler(ServiceError)
@@ -70,6 +100,84 @@ async def runtime_error_handler(_, exc: RuntimeError):
 @app.get("/health")
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/upload", response_model=UploadResponse, status_code=201)
+async def upload(
+    file: UploadFile = File(...),
+    topic_name: str = Form(...),
+    project_name: str = Form(...),
+    title: str | None = Form(default=None),
+    language: str = Form(default="en"),
+    source_type: str = Form(default="document"),
+    source_origin: str = Form(default="upload"),
+    source_external_id: str | None = Form(default=None),
+    source_url: str | None = Form(default=None),
+    source_published_at: str | None = Form(default=None),
+    source_metadata: str = Form(default="{}"),
+    document_metadata: str = Form(default="{}"),
+    max_chars: int = Form(default=1000),
+    overlap_chars: int = Form(default=200),
+) -> UploadResponse:
+    ingest_service: IngestService = app.state.ingest_service
+
+    filename = file.filename or "upload.bin"
+    content_type = file.content_type
+
+    try:
+        try:
+            raw_bytes = await file.read()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=f"Could not read uploaded file: {str(exc)}") from exc
+
+        if not raw_bytes:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+        extracted_text = extract_text_from_file(filename=filename, content_type=content_type, data=raw_bytes)
+
+        payload_dict = {
+            "topic_name": topic_name,
+            "project_name": project_name,
+            "source": {
+                "type": source_type,
+                "origin": source_origin,
+                "external_id": _none_if_empty(source_external_id) or filename,
+                "url": _none_if_empty(source_url),
+                "published_at": _none_if_empty(source_published_at),
+                "metadata": _parse_form_json(source_metadata, "source_metadata"),
+            },
+            "document": {
+                "title": _none_if_empty(title) or filename,
+                "language": language,
+                "metadata": _parse_form_json(document_metadata, "document_metadata"),
+            },
+            "text": extracted_text,
+            "chunking": {
+                "max_chars": max_chars,
+                "overlap_chars": overlap_chars,
+            },
+        }
+
+        try:
+            payload = IngestRequest.model_validate(payload_dict)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+        try:
+            ingest_result = await ingest_service.ingest(payload)
+        except ServiceError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=500, detail=f"Unexpected upload error: {str(exc)}") from exc
+
+        return UploadResponse(
+            **ingest_result.model_dump(),
+            filename=filename,
+            content_type=content_type,
+            chars_extracted=len(extracted_text),
+        )
+    finally:
+        await file.close()
 
 
 @app.post("/ingest", response_model=IngestResponse, status_code=201)

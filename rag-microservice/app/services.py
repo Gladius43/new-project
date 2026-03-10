@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import math
+from io import BytesIO
+from pathlib import Path
 
 import asyncpg
 from openai import APIError, AsyncOpenAI, OpenAIError
@@ -16,6 +18,82 @@ class ServiceError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.message = message
+
+
+SUPPORTED_TEXT_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".log", ".rst"}
+
+
+def extract_text_from_file(filename: str, content_type: str | None, data: bytes) -> str:
+    suffix = Path(filename).suffix.lower()
+    normalized_content_type = (content_type or "").lower()
+
+    if suffix == ".pdf" or "application/pdf" in normalized_content_type:
+        return _extract_text_from_pdf(data)
+
+    if suffix == ".docx" or "wordprocessingml.document" in normalized_content_type:
+        return _extract_text_from_docx(data)
+
+    if suffix in SUPPORTED_TEXT_EXTENSIONS or normalized_content_type.startswith("text/"):
+        return _extract_text_from_plain_text(data)
+
+    raise ServiceError(400, "Unsupported file type. Supported: pdf, docx, txt, md, csv, json, log, rst.")
+
+
+def _extract_text_from_plain_text(data: bytes) -> str:
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ServiceError(400, "Plain text files must be UTF-8 encoded.") from exc
+
+    text = text.strip()
+    if not text:
+        raise ServiceError(400, "Uploaded file is empty after text extraction.")
+    return text
+
+
+def _extract_text_from_pdf(data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise ServiceError(500, "Missing dependency 'pypdf' for PDF extraction.") from exc
+
+    try:
+        reader = PdfReader(BytesIO(data))
+        page_texts = [(page.extract_text() or "").strip() for page in reader.pages]
+    except Exception as exc:  # noqa: BLE001
+        raise ServiceError(400, f"Failed to read PDF: {str(exc)}") from exc
+
+    text = "\n\n".join(segment for segment in page_texts if segment).strip()
+    if not text:
+        raise ServiceError(400, "Could not extract text from PDF.")
+    return text
+
+
+def _extract_text_from_docx(data: bytes) -> str:
+    try:
+        from docx import Document
+    except ImportError as exc:
+        raise ServiceError(500, "Missing dependency 'python-docx' for DOCX extraction.") from exc
+
+    try:
+        document = Document(BytesIO(data))
+    except Exception as exc:  # noqa: BLE001
+        raise ServiceError(400, f"Failed to read DOCX: {str(exc)}") from exc
+
+    paragraphs = [p.text.strip() for p in document.paragraphs if p.text and p.text.strip()]
+
+    table_cells: list[str] = []
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                cell_text = cell.text.strip()
+                if cell_text:
+                    table_cells.append(cell_text)
+
+    text = "\n\n".join(paragraphs + table_cells).strip()
+    if not text:
+        raise ServiceError(400, "Could not extract text from DOCX.")
+    return text
 
 
 def chunk_text(text: str, max_chars: int, overlap_chars: int) -> list[str]:

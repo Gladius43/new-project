@@ -51,6 +51,12 @@ class IngestResponse(BaseModel):
     chunks_inserted: int
 
 
+class UploadResponse(IngestResponse):
+    filename: str
+    content_type: str | None
+    chars_extracted: int
+
+
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1)
     top_k: int = Field(default=10, ge=1, le=100)

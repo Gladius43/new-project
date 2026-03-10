@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 import os
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ ENV_BASE_URL = "EMBED_API_URL"
 DEFAULT_BASE_URL = "http://ingenious-embrace.railway.internal"
 
 INGEST_PATH = "/ingest"
+UPLOAD_PATH = "/upload"
 SEARCH_PATH = "/search"
 HEALTH_PATH = "/health"
 
@@ -208,25 +210,41 @@ def run_embed(base_url: str, args: argparse.Namespace) -> None:
 
 
 def run_upload(base_url: str, args: argparse.Namespace) -> None:
-    text = read_text_file(args.file)
-    filename = Path(args.file).name
-    run_ingest_request(
-        base_url=base_url,
-        text=text,
-        topic_name=args.topic_name,
-        project_name=args.project_name,
-        source_type=args.source_type,
-        source_origin=args.source_origin,
-        source_external_id=args.source_external_id or filename,
-        source_url=args.source_url,
-        source_published_at=args.source_published_at,
-        source_metadata_raw=args.source_metadata,
-        document_title=args.document_title or filename,
-        document_language=args.document_language,
-        document_metadata_raw=args.document_metadata,
-        max_chars=args.max_chars,
-        overlap_chars=args.overlap_chars,
-    )
+    path = Path(args.file)
+    if not path.exists():
+        exit_with_error(f"Error: file not found: {path}")
+    if not path.is_file():
+        exit_with_error(f"Error: not a file: {path}")
+
+    content_type, _ = mimetypes.guess_type(path.name)
+    if content_type is None:
+        content_type = "application/octet-stream"
+
+    form_data = {
+        "topic_name": args.topic_name,
+        "project_name": args.project_name,
+        "title": args.document_title or path.name,
+        "language": args.document_language,
+        "source_type": args.source_type,
+        "source_origin": args.source_origin,
+        "source_external_id": args.source_external_id or path.name,
+        "source_url": args.source_url or "",
+        "source_published_at": args.source_published_at or "",
+        "source_metadata": args.source_metadata,
+        "document_metadata": args.document_metadata,
+        "max_chars": str(args.max_chars),
+        "overlap_chars": str(args.overlap_chars),
+    }
+
+    url = join_url(base_url, UPLOAD_PATH)
+    try:
+        with path.open("rb") as file_handle:
+            files = {"file": (path.name, file_handle, content_type)}
+            result = request_json("POST", url, data=form_data, files=files)
+    except OSError as exc:
+        exit_with_error(f"Error: cannot read file: {exc}")
+
+    print_json(result)
 
 
 def run_search(base_url: str, args: argparse.Namespace) -> None:
@@ -282,8 +300,8 @@ def build_parser() -> argparse.ArgumentParser:
     embed_parser.add_argument("--text", required=True, help="Text to ingest")
     add_ingest_fields(embed_parser)
 
-    upload_parser = subparsers.add_parser("upload", help="Compatibility alias: ingest file")
-    upload_parser.add_argument("--file", required=True, help="Path to UTF-8 text file to ingest")
+    upload_parser = subparsers.add_parser("upload", help="Upload file via /upload (pdf/docx/txt/...)")
+    upload_parser.add_argument("--file", required=True, help="Path to file to upload")
     add_ingest_fields(upload_parser)
 
     search_parser = subparsers.add_parser("search", help="Semantic search")
