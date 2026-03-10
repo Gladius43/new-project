@@ -4,6 +4,8 @@ import asyncio
 import math
 from io import BytesIO
 from pathlib import Path
+import zipfile
+import xml.etree.ElementTree as ET
 
 import asyncpg
 from openai import APIError, AsyncOpenAI, OpenAIError
@@ -71,26 +73,34 @@ def _extract_text_from_pdf(data: bytes) -> str:
 
 def _extract_text_from_docx(data: bytes) -> str:
     try:
-        from docx import Document
-    except ImportError as exc:
-        raise ServiceError(500, "Missing dependency 'python-docx' for DOCX extraction.") from exc
-
-    try:
-        document = Document(BytesIO(data))
+        with zipfile.ZipFile(BytesIO(data)) as archive:
+            if "word/document.xml" not in archive.namelist():
+                raise ServiceError(400, "Invalid DOCX: missing word/document.xml.")
+            xml_bytes = archive.read("word/document.xml")
+    except zipfile.BadZipFile as exc:
+        raise ServiceError(400, "Failed to read DOCX: invalid zip archive.") from exc
+    except KeyError as exc:
+        raise ServiceError(400, "Failed to read DOCX content.") from exc
+    except ServiceError:
+        raise
     except Exception as exc:  # noqa: BLE001
         raise ServiceError(400, f"Failed to read DOCX: {str(exc)}") from exc
 
-    paragraphs = [p.text.strip() for p in document.paragraphs if p.text and p.text.strip()]
+    try:
+        root = ET.fromstring(xml_bytes)
+    except Exception as exc:  # noqa: BLE001
+        raise ServiceError(400, f"Failed to read DOCX: {str(exc)}") from exc
 
-    table_cells: list[str] = []
-    for table in document.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                cell_text = cell.text.strip()
-                if cell_text:
-                    table_cells.append(cell_text)
+    namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    paragraphs: list[str] = []
+    for paragraph in root.findall(".//w:p", namespace):
+        chunks = [node.text for node in paragraph.findall(".//w:t", namespace) if node.text]
+        if chunks:
+            paragraph_text = "".join(chunks).strip()
+            if paragraph_text:
+                paragraphs.append(paragraph_text)
 
-    text = "\n\n".join(paragraphs + table_cells).strip()
+    text = "\n\n".join(paragraphs).strip()
     if not text:
         raise ServiceError(400, "Could not extract text from DOCX.")
     return text
