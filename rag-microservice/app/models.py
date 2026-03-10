@@ -44,26 +44,6 @@ def _coerce_value_for_udt(value: Any, udt_name: str | None) -> Any:
     return str(value)
 
 
-def _id_candidates(value: Any, preferred_udt: str | None) -> list[Any]:
-    candidates: list[Any] = []
-    seen: set[str] = set()
-
-    def add(candidate: Any) -> None:
-        key = f"{type(candidate).__name__}:{candidate}"
-        if key in seen:
-            return
-        seen.add(key)
-        candidates.append(candidate)
-
-    add(_coerce_value_for_udt(value, preferred_udt))
-    add(value)
-    add(_coerce_value_for_udt(value, "uuid"))
-    add(_coerce_value_for_udt(value, "int8"))
-    add(str(value))
-
-    return candidates
-
-
 async def _get_column_udt_name(
     conn: asyncpg.Connection,
     table_name: str,
@@ -73,7 +53,9 @@ async def _get_column_udt_name(
         """
         SELECT udt_name
         FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+        WHERE table_name = $1 AND column_name = $2
+        ORDER BY (table_schema = 'public') DESC
+        LIMIT 1
         """,
         table_name,
         column_name,
@@ -115,31 +97,22 @@ async def get_or_create_project(
     if row is not None:
         return row["id"]
 
-    last_error: Exception | None = None
-    for candidate_topic_id in _id_candidates(topic_id, topic_id_udt):
-        try:
-            row = await conn.fetchrow(
-                """
-                INSERT INTO projects (topic_id, name)
-                VALUES ($1, $2)
-                RETURNING id
-                """,
-                candidate_topic_id,
-                project_name,
-            )
-            return row["id"]
-        except asyncpg.UniqueViolationError:
-            row = await conn.fetchrow("SELECT id FROM projects WHERE name = $1", project_name)
-            if row is not None:
-                return row["id"]
-            last_error = None
-        except asyncpg.DataError as exc:
-            last_error = exc
+    try:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO projects (topic_id, name)
+            VALUES ($1, $2)
+            RETURNING id
+            """,
+            coerced_topic_id,
+            project_name,
+        )
+    except asyncpg.UniqueViolationError:
+        row = await conn.fetchrow("SELECT id FROM projects WHERE name = $1", project_name)
+        if row is None:
+            raise
 
-    if last_error is not None:
-        raise last_error
-
-    raise RuntimeError("Unable to create project with compatible topic_id type")
+    return row["id"]
 
 
 async def create_source(
@@ -157,45 +130,33 @@ async def create_source(
     source_metadata.setdefault("topic_name", topic_name)
     source_metadata.setdefault("project_name", project_name)
 
-    last_error: Exception | None = None
-    topic_candidates = _id_candidates(topic_id, source_topic_udt)
-    project_candidates = _id_candidates(project_id, source_project_udt)
-
-    for candidate_topic_id in topic_candidates:
-        for candidate_project_id in project_candidates:
-            try:
-                row = await conn.fetchrow(
-                    """
-                    INSERT INTO sources (
-                        topic_id,
-                        project_id,
-                        type,
-                        origin,
-                        external_id,
-                        url,
-                        published_at,
-                        metadata
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-                    RETURNING id
-                    """,
-                    candidate_topic_id,
-                    candidate_project_id,
-                    source.type,
-                    source.origin,
-                    source.external_id,
-                    source.url,
-                    source.published_at,
-                    json.dumps(source_metadata),
-                )
-                return row["id"]
-            except asyncpg.DataError as exc:
-                last_error = exc
-
-    if last_error is not None:
-        raise last_error
-
-    raise RuntimeError("Unable to create source with compatible topic_id/project_id types")
+    coerced_topic_id = _coerce_value_for_udt(topic_id, source_topic_udt)
+    coerced_project_id = _coerce_value_for_udt(project_id, source_project_udt)
+    row = await conn.fetchrow(
+        """
+        INSERT INTO sources (
+            topic_id,
+            project_id,
+            type,
+            origin,
+            external_id,
+            url,
+            published_at,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        RETURNING id
+        """,
+        coerced_topic_id,
+        coerced_project_id,
+        source.type,
+        source.origin,
+        source.external_id,
+        source.url,
+        source.published_at,
+        json.dumps(source_metadata),
+    )
+    return row["id"]
 
 
 async def create_document(
