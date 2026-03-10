@@ -47,6 +47,7 @@ export DATABASE_URL="postgresql://user:password@localhost:5432/ragdb"
 export OPENAI_API_KEY="sk-..."
 export EMBEDDING_MODEL="text-embedding-3-small"
 export EMBEDDING_DIM="1536"
+export SERVICE_VERSION="1.1.0"
 ```
 
 Start API:
@@ -139,3 +140,4 @@ curl -X POST "http://localhost:8000/search" \
 - Embeddings are normalized to unit vectors before insert/search.
 - Keep `EMBEDDING_MODEL` and `EMBEDDING_DIM` consistent with your database schema.
 - `/upload` extracts text first, then ingests it through the same pipeline as `/ingest`.
+- `GET /health` returns `{ "status": "ok", "version": "<SERVICE_VERSION>" }` to confirm the deployed revision.

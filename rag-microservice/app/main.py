@@ -16,6 +16,7 @@ from app.services import EmbeddingService, IngestService, SearchService, Service
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.1.0")
 
 
 def get_required_env(name: str) -> str:
@@ -61,7 +62,7 @@ async def lifespan(app: FastAPI):
         await db.close()
 
 
-app = FastAPI(title="RAG Microservice", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="RAG Microservice", version=SERVICE_VERSION, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -99,7 +100,7 @@ async def runtime_error_handler(_, exc: RuntimeError):
 
 @app.get("/health")
 async def healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "version": SERVICE_VERSION}
 
 
 @app.post("/upload", response_model=UploadResponse, status_code=201)
