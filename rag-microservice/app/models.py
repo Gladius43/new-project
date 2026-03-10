@@ -137,9 +137,31 @@ async def get_or_create_project(
 ) -> Any:
     topic_id_udt = await _get_column_udt_name(conn, "projects", "topic_id")
     coerced_topic_id = _coerce_value_for_udt(topic_id, topic_id_udt)
-    row = await conn.fetchrow("SELECT id FROM projects WHERE name = $1", project_name)
+    row = await conn.fetchrow(
+        """
+        SELECT id
+        FROM projects
+        WHERE name = $1 AND topic_id::text = $2
+        """,
+        project_name,
+        str(coerced_topic_id),
+    )
     if row is not None:
         return row["id"]
+
+    # Legacy fallback: if there is exactly one project with this name and no typed topic link,
+    # reuse it. If there are multiple, prefer creating a new typed row.
+    fallback_rows = await conn.fetch(
+        """
+        SELECT id
+        FROM projects
+        WHERE name = $1
+        LIMIT 2
+        """,
+        project_name,
+    )
+    if len(fallback_rows) == 1:
+        return fallback_rows[0]["id"]
 
     try:
         row = await conn.fetchrow(
@@ -152,7 +174,15 @@ async def get_or_create_project(
             project_name,
         )
     except asyncpg.UniqueViolationError:
-        row = await conn.fetchrow("SELECT id FROM projects WHERE name = $1", project_name)
+        row = await conn.fetchrow(
+            """
+            SELECT id
+            FROM projects
+            WHERE name = $1 AND topic_id::text = $2
+            """,
+            project_name,
+            str(coerced_topic_id),
+        )
         if row is None:
             raise
 
